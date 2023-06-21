@@ -47,7 +47,6 @@ defmodule Tortoise311.Transport.SSL do
     :ssl.setopts(socket, opts)
   end
 
-  @impl Tortoise311.Transport
   def getopts(socket, opts) do
     :ssl.getopts(socket, opts)
   end
@@ -67,27 +66,22 @@ defmodule Tortoise311.Transport.SSL do
     :ssl.controlling_process(socket, pid)
   end
 
-  @impl Tortoise311.Transport
   def peername(socket) do
     :ssl.peername(socket)
   end
 
-  @impl Tortoise311.Transport
   def sockname(socket) do
     :ssl.sockname(socket)
   end
 
-  @impl Tortoise311.Transport
   def shutdown(socket, mode) when mode in [:read, :write, :read_write] do
     :ssl.shutdown(socket, mode)
   end
 
-  @impl Tortoise311.Transport
   def close(socket) do
     :ssl.close(socket)
   end
 
-  @impl Tortoise311.Transport
   def listen(opts) do
     case Keyword.has_key?(opts, :cert) do
       true ->
@@ -98,12 +92,10 @@ defmodule Tortoise311.Transport.SSL do
     end
   end
 
-  @impl Tortoise311.Transport
   def accept(listen_socket, timeout) do
     :ssl.transport_accept(listen_socket, timeout)
   end
 
-  @impl Tortoise311.Transport
   def accept_ack(client_socket, timeout) do
     case :ssl.handshake(client_socket, timeout) do
       {:ok, _} ->

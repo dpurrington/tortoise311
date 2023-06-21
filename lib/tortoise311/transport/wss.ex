@@ -28,7 +28,8 @@ defmodule Tortoise311.Transport.WSS do
 
   @impl Tortoise311.Transport
   def connect(_host, _port, _opts, _timeout) do
-    nil
+    # TODO: this needs to be the pid of the wss connection
+    {:ok, nil}
   end
 
   @impl Tortoise311.Transport
@@ -47,12 +48,6 @@ defmodule Tortoise311.Transport.WSS do
   end
 
   @impl Tortoise311.Transport
-  def getopts(socket, opts) do
-    #notused
-    :ssl.getopts(socket, opts)
-  end
-
-  @impl Tortoise311.Transport
   def getstat(socket) do
     :ssl.getstat(socket)
   end
@@ -65,73 +60,5 @@ defmodule Tortoise311.Transport.WSS do
   @impl Tortoise311.Transport
   def controlling_process(socket, pid) do
     :ssl.controlling_process(socket, pid)
-  end
-
-  @impl Tortoise311.Transport
-  def peername(socket) do
-    #notused
-    :ssl.peername(socket)
-  end
-
-  @impl Tortoise311.Transport
-  def sockname(socket) do
-    #notused
-    :ssl.sockname(socket)
-  end
-
-  @impl Tortoise311.Transport
-  def shutdown(socket, mode) when mode in [:read, :write, :read_write] do
-    #notused
-    :ssl.shutdown(socket, mode)
-  end
-
-  @impl Tortoise311.Transport
-  def close(socket) do
-    #notused
-    :ssl.close(socket)
-  end
-
-  @impl Tortoise311.Transport
-  def listen(opts) do
-    #notused
-    case Keyword.has_key?(opts, :cert) do
-      true ->
-        :ssl.listen(0, opts)
-
-      false ->
-        throw("Please specify the cert key for the SSL transport")
-    end
-  end
-
-  @impl Tortoise311.Transport
-  def accept(listen_socket, timeout) do
-    #notused
-    :ssl.transport_accept(listen_socket, timeout)
-  end
-
-  @impl Tortoise311.Transport
-  def accept_ack(client_socket, timeout) do
-    #notused
-    case :ssl.handshake(client_socket, timeout) do
-      {:ok, _} ->
-        :ok
-
-      {:ok, _, _} ->
-        :ok
-
-      # abnormal data sent to socket
-      {:error, {:tls_alert, _}} ->
-        :ok = close(client_socket)
-        exit(:normal)
-
-      # Socket most likely stopped responding, don't error out.
-      {:error, reason} when reason in [:timeout, :closed] ->
-        :ok = close(client_socket)
-        exit(:normal)
-
-      {:error, reason} ->
-        :ok = close(client_socket)
-        throw(reason)
-    end
   end
 end

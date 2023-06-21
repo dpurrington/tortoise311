@@ -45,7 +45,6 @@ defmodule Tortoise311.Transport.Tcp do
     :inet.setopts(socket, opts)
   end
 
-  @impl Tortoise311.Transport
   def getopts(socket, opts) do
     :inet.getopts(socket, opts)
   end
@@ -65,39 +64,32 @@ defmodule Tortoise311.Transport.Tcp do
     :gen_tcp.controlling_process(socket, pid)
   end
 
-  @impl Tortoise311.Transport
   def peername(socket) do
     :inet.peername(socket)
   end
 
-  @impl Tortoise311.Transport
   def sockname(socket) do
     :inet.sockname(socket)
   end
 
-  @impl Tortoise311.Transport
   def shutdown(socket, mode) when mode in [:read, :write, :read_write] do
     :gen_tcp.shutdown(socket, mode)
   end
 
-  @impl Tortoise311.Transport
   def close(socket) do
     :gen_tcp.close(socket)
   end
 
-  @impl Tortoise311.Transport
   def listen(opts) do
     # forced_opts = [:binary, active: false, packet: :raw, reuseaddr: true]
     # opts = Keyword.merge(opts, forced_opts)
     :gen_tcp.listen(0, opts)
   end
 
-  @impl Tortoise311.Transport
   def accept(listen_socket, timeout) do
     :gen_tcp.accept(listen_socket, timeout)
   end
 
-  @impl Tortoise311.Transport
   def accept_ack(_socket, _timeout) do
     :ok
   end
