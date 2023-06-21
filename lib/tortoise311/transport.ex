@@ -1,7 +1,7 @@
 defmodule Tortoise311.Transport do
   @moduledoc """
   Abstraction for working with network connections; this is done to
-  normalize the `:ssl` and `:gen_tcp` modules, so they get a similar
+  normalize the `:ssl`, `:gen_tcp`, and `wss` modules, so they get a similar
   interface.
 
   This work has been heavily inspired by the Ranch project by

@@ -48,6 +48,9 @@ defmodule Tortoise311.MixProject do
       {:excoveralls, "~> 0.10", only: :test},
       {:ex_doc, "~> 0.19", only: :docs, runtime: false},
       {:ct_helper, github: "ninenines/ct_helper", only: :test},
+      {:websockex, "~> 0.4.3"},
+      {:httpoison, "~> 2.0"},
+      {:poison, "~> 5.0"},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
     ]
   end
