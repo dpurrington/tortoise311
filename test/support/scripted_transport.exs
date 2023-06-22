@@ -93,7 +93,6 @@ defmodule Tortoise311.Integration.ScriptedTransport do
     GenServer.call(via_name({host, port}), {:connect, opts, timeout})
   end
 
-  @impl true
   def close(socket) do
     GenServer.call(socket, :close)
   end
@@ -103,7 +102,6 @@ defmodule Tortoise311.Integration.ScriptedTransport do
     GenServer.call(socket, {:controlling_process, pid})
   end
 
-  @impl true
   def getopts(socket, opts) do
     GenServer.call(socket, {:getopts, opts})
   end
@@ -118,12 +116,10 @@ defmodule Tortoise311.Integration.ScriptedTransport do
     GenServer.call(socket, {:getstat, opt_names})
   end
 
-  @impl true
   def peername(socket) do
     GenServer.call(socket, :peername)
   end
 
-  @impl true
   def sockname(socket) do
     GenServer.call(socket, :sockname)
   end
@@ -143,22 +139,18 @@ defmodule Tortoise311.Integration.ScriptedTransport do
     GenServer.call(socket, {:setopts, opts})
   end
 
-  @impl true
   def shutdown(socket, mode) when mode in [:read, :write, :read_write] do
     GenServer.call(socket, {:shutdown, mode})
   end
 
-  @impl true
   def listen(_opts) do
     {:error, :not_implemented}
   end
 
-  @impl true
   def accept(_socket, _timeout) do
     {:error, :not_implemented}
   end
 
-  @impl true
   def accept_ack(_client_socket, _timeout) do
     {:error, :not_implemented}
   end
