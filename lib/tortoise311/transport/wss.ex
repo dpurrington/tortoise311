@@ -3,9 +3,12 @@ defmodule Tortoise311.Transport.WSS do
 
   @behaviour Tortoise311.Transport
 
-  alias Tortoise311.Transport
+  import Kernel, except: [send: 2]
 
-  @default_opts [verify: :verify_peer]
+  alias Tortoise311.Transport
+  alias Tortoise311.Transport.WssConnection
+
+  @default_opts []
 
   @impl Tortoise311.Transport
   def new(opts) do
@@ -29,36 +32,40 @@ defmodule Tortoise311.Transport.WSS do
   @impl Tortoise311.Transport
   def connect(_host, _port, _opts, _timeout) do
     # TODO: this needs to be the pid of the wss connection
+    socket = WssConnection.start_link([])
+    {:ok, socket}
+  end
+
+  @impl Tortoise311.Transport
+  def recv(_socket, _length, _timeout) do
+    # poll the socket -- can this be done?
     {:ok, nil}
   end
 
   @impl Tortoise311.Transport
-  def recv(socket, length, timeout) do
-    :ssl.recv(socket, length, timeout)
+  def send(_socket, _data) do
+    :ok
   end
 
   @impl Tortoise311.Transport
-  def send(socket, data) do
-    :ssl.send(socket, data)
+  def setopts(_socket, _opts) do
+    # this is a no-op for wss
+    # because we are not pulling off one message at a time
+    :ok
   end
 
   @impl Tortoise311.Transport
-  def setopts(socket, opts) do
-    :ssl.setopts(socket, opts)
+  def getstat(_socket) do
+    {:ok, :not_implemented}
   end
 
   @impl Tortoise311.Transport
-  def getstat(socket) do
-    :ssl.getstat(socket)
-  end
-
-  @impl Tortoise311.Transport
-  def getstat(socket, opt_names) do
-    :ssl.getstat(socket, opt_names)
+  def getstat(_socket, _opt_names) do
+    {:ok, :not_implemented}
   end
 
   @impl Tortoise311.Transport
   def controlling_process(socket, pid) do
-    :ssl.controlling_process(socket, pid)
+    WssConnection.set_controller(socket, pid)
   end
 end

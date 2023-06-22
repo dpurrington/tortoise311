@@ -5,6 +5,7 @@ defmodule Tortoise311.Connection.Receiver do
 
   alias Tortoise311.Connection.Controller
   alias Tortoise311.Events
+  alias Tortoise311.Transport
   alias __MODULE__, as: State
 
   defstruct client_id: nil, transport: nil, socket: nil, buffer: <<>>
@@ -52,7 +53,7 @@ defmodule Tortoise311.Connection.Receiver do
   @impl GenStateMachine
   # receiving data on the network connection
   def handle_event(:info, {transport, socket, tcp_data}, _, %{socket: socket} = data)
-      when transport in [:tcp, :ssl] do
+      when transport in [:tcp, :ssl, :wss] do
     next_actions = [
       {:next_event, :internal, :activate_socket},
       {:next_event, :internal, :consume_buffer}
@@ -76,7 +77,13 @@ defmodule Tortoise311.Connection.Receiver do
     {:next_state, :disconnected, %{data | socket: nil}}
   end
 
-  # activate network socket for incoming traffic
+  # WSS does not do this
+  def handle_event(:internal, :activate_socket, _state_name, %State{
+        transport: %Transport{type: :wss}
+      }) do
+    :keep_state_and_data
+  end
+
   def handle_event(:internal, :activate_socket, _state_name, %State{transport: nil}) do
     {:stop, :no_transport}
   end
