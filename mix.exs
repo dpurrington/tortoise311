@@ -51,6 +51,7 @@ defmodule Tortoise311.MixProject do
       {:websockex, "~> 0.4.3"},
       {:httpoison, "~> 2.0"},
       {:poison, "~> 5.0"},
+      {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
       {:credo, "~> 1.6", only: [:dev, :test], runtime: false}
     ]
   end
