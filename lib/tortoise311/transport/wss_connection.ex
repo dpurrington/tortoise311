@@ -1,7 +1,8 @@
 defmodule Tortoise311.Transport.WssConnection do
-  use WebSockex
-
+  use GenServer
   require Logger
+
+  alias Tortoise311.Transport.WssGateway
 
   @moduledoc false
 
@@ -9,102 +10,110 @@ defmodule Tortoise311.Transport.WssConnection do
   # older messages fall off
   @max_buffer_size 10
 
-  def start_link(%{session_id: session_id, url: url} = opts) do
-    headers = [
-      {<<"X-Requested-With">>, "com.sengled.life2"},
-      {<<"Cookie">>, "JSESSIONID=#{session_id}"},
-      {<<"sid">>, session_id}
-    ]
-
-    temp_buffer = Agent.start_link(fn -> :queue.new() end)
-    opts = Map.put(opts, :temp_buffer, temp_buffer)
-
-    WebSockex.start_link(url, __MODULE__, opts, extra_headers: headers)
+  def start_link(opts) do
+    GenServer.start_link(__MODULE__, opts)
   end
 
-  def start_link(_opts), do: {:error, :missing_options}
+  @impl true
+  def init(opts) do
+    case WssGateway.start_link(opts ++ [{:receiver, self()}]) do
+      {:ok, pid} ->
+        {:ok, %{buffer: :queue.new(), gateway: pid, controller: nil}}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
 
   # API
-  def send(client, message) do
-    WebSockex.send_frame(client, {:text, message})
+  def send(server, message) do
+    GenServer.cast(server, {:send, message})
   end
 
-  def set_controller(connection, pid) do
-    GenServer.cast(connection, {:set_controller, pid})
+  def set_controller(_server, nil), do: raise("nil controller not allowed")
+
+  def set_controller(server, pid) do
+    GenServer.call(server, {:set_controller, pid})
   end
 
-  def recv(connection, timeout) do
-    do_recv(connection, DateTime.add(DateTime.utc_now(), timeout))
+  def recv(server, timeout) do
+    quit_time = DateTime.add(DateTime.utc_now(), timeout)
+    do_recv(server, quit_time)
   end
 
-  defp do_recv(connection, quit_time) do
-    if DateTime.utc_now() > quit_time do
-      {:timeout}
+  defp do_recv(server, quit_time) do
+    if DateTime.diff(quit_time, DateTime.utc_now()) > 0 do
+      # check for a message on the server
+      # note that we don't sleep on the server b/c
+      # it would halt server processing
+      case GenServer.call(server, :recv) do
+        {:ok, message} ->
+          {:ok, message}
+
+        :empty ->
+          # server does not have any messages, sleep and try again
+          :timer.sleep(500)
+          do_recv(server, quit_time)
+      end
+    else
+      :timeout
     end
+  end
 
-    case get_buffered_message(connection.temp_buffer) do
-      {:ok, message} ->
-        {:ok, message}
+  # GenServer callbacks
+  @impl true
+  def handle_call(:recv, _from, %{buffer: buffer} = st) do
+    case :queue.out(buffer) do
+      {{:value, frame}, buffer} ->
+        Logger.debug("Removed item from buffer: #{inspect(frame)}")
+        {:reply, {:ok, frame}, %{st | buffer: buffer}}
 
-      {:empty} ->
-        :timer.sleep(500)
-        do_recv(connection, quit_time)
+      {:empty, _} ->
+        {:reply, :empty, st}
     end
   end
 
-  defp get_buffered_message(temp_buffer) do
-    Agent.get_and_update(temp_buffer, &:queue.out(&1))
+  @impl true
+  def handle_call({:set_controller, pid}, _from, %{buffer: buffer} = st) do
+    empty_buffer(buffer, pid)
+
+    {:reply, :ok, %{st | controller: pid}}
   end
 
-  def handle_cast({:set_controller, pid}, _from, %{temp_buffer: temp_buffer} = st) do
-    process_and_shutdown_buffer(temp_buffer, pid)
+  @impl true
+  def handle_info({:message, {type, msg} = frame}, %{buffer: buffer, controller: controller} = st) do
+    Logger.debug("received message - type: #{inspect(type)} -- message: #{inspect(msg)}")
 
-    new_st =
-      st
-      |> Map.put(:controller, pid)
-      |> Map.put(:temp_buffer, nil)
+    case controller do
+      nil ->
+        {:noreply, %{st | buffer: add_to_buffer(buffer, frame)}}
 
-    {:reply, :ok, new_st}
+      pid ->
+        Process.send(pid, {:message, frame}, [])
+        {:noreply, st}
+    end
   end
 
-  def handle_info(message, state) do
-    Logger.warn("Unknown info message: #{message}")
-    {:ok, state}
+  @impl true
+  def handle_cast({:send, frame}, %{gateway: gateway} = st) do
+    WssGateway.send(gateway, frame)
+    {:noreply, st}
   end
 
-  defp process_and_shutdown_buffer(temp_buffer, pid) do
-    buffer_data = Agent.get(temp_buffer, fn content -> content end)
-    Agent.stop(temp_buffer)
-
+  defp empty_buffer(buffer, controller) do
     Task.start_link(fn ->
-      buffer_data
-      |> :queue.to_list()
-      |> Enum.each(fn message -> Process.send(pid, {:message, message}, []) end)
+      :queue.to_list(buffer)
+      |> Enum.each(fn message -> Process.send(controller, {:message, message}, []) end)
     end)
   end
 
-  def handle_frame({type, msg} = frame, st) do
-    IO.inspect("Received message - type: #{inspect(type)} -- message: #{inspect(msg)}")
-
-    case Map.get(st, :controller) do
-      # TODO: need to limit the size of the buffer so we don't run out of memory
-      nil -> Agent.update(st.temp_buffer, &add_to_buffer(&1, frame))
-      pid -> Process.send(pid, {:message, frame}, [])
+  defp add_to_buffer(buffer, item, max_size \\ @max_buffer_size) do
+    if :queue.len(buffer) >= max_size do
+      Logger.debug("Buffer full, dropping oldest message")
+      buffer = :queue.drop(buffer)
+      :queue.in(item, buffer)
+    else
+      :queue.in(item, buffer)
     end
-
-    {:ok, st}
-  end
-
-  def add_to_buffer(queue, item, max_size \\ @max_buffer_size) do
-    if :queue.len(queue) == max_size do
-      ^queue = :queue.drop(queue)
-    end
-
-    :queue.in(item, queue)
-  end
-
-  def handle_cast({:send, {type, msg} = frame}, state) do
-    IO.puts("Sending #{type} frame with payload: #{msg}")
-    {:reply, frame, state}
   end
 end
