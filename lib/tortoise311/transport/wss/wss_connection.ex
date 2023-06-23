@@ -1,8 +1,8 @@
-defmodule Tortoise311.Transport.WssConnection do
+defmodule Tortoise311.Transport.Wss.Connection do
   use GenServer
   require Logger
 
-  alias Tortoise311.Transport.WssGateway
+  alias Tortoise311.Transport.Wss.Gateway
 
   @moduledoc false
 
@@ -16,7 +16,7 @@ defmodule Tortoise311.Transport.WssConnection do
 
   @impl true
   def init(opts) do
-    case WssGateway.start_link(opts ++ [{:receiver, self()}]) do
+    case Gateway.start_link(opts ++ [{:receiver, self()}]) do
       {:ok, pid} ->
         {:ok, %{buffer: :queue.new(), gateway: pid, controller: nil}}
 
@@ -96,7 +96,7 @@ defmodule Tortoise311.Transport.WssConnection do
 
   @impl true
   def handle_cast({:send, frame}, %{gateway: gateway} = st) do
-    WssGateway.send(gateway, frame)
+    Gateway.send(gateway, frame)
     {:noreply, st}
   end
 

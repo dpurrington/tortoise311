@@ -1,4 +1,4 @@
-defmodule Tortoise311.Transport.WssGateway do
+defmodule Tortoise311.Transport.Wss.Gateway do
   use WebSockex
 
   require Logger
