@@ -6,7 +6,7 @@ defmodule Tortoise311.Transport.WSS do
   import Kernel, except: [send: 2]
 
   alias Tortoise311.Transport
-  alias Tortoise311.Transport.WssConnection
+  alias Tortoise311.Transport.Wss.Connection
 
   @default_opts []
 
@@ -30,21 +30,20 @@ defmodule Tortoise311.Transport.WSS do
   end
 
   @impl Tortoise311.Transport
-  def connect(_host, _port, _opts, _timeout) do
-    # TODO: this needs to be the pid of the wss connection
-    socket = WssConnection.start_link([])
+  def connect(host, port, opts, _timeout) do
+    url = "wss://#{host}:#{port}#{opts[:path]}}"
+    socket = Connection.start_link(url: url)
     {:ok, socket}
   end
 
   @impl Tortoise311.Transport
-  def recv(_socket, _length, _timeout) do
-    # poll the socket -- can this be done?
-    {:ok, nil}
+  def recv(socket, _length, timeout) do
+    Connection.recv(socket, timeout)
   end
 
   @impl Tortoise311.Transport
-  def send(_socket, _data) do
-    :ok
+  def send(socket, data) do
+    Connection.send(socket, data)
   end
 
   @impl Tortoise311.Transport
@@ -66,6 +65,6 @@ defmodule Tortoise311.Transport.WSS do
 
   @impl Tortoise311.Transport
   def controlling_process(socket, pid) do
-    WssConnection.set_controller(socket, pid)
+    Connection.set_controller(socket, pid)
   end
 end

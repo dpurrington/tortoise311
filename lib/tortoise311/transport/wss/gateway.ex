@@ -6,11 +6,19 @@ defmodule Tortoise311.Transport.Wss.Gateway do
   @moduledoc false
 
   def start_link(opts) do
-    WebSockex.start_link(opts[:url], __MODULE__, %{receiver: opts[:receiver]}, opts)
+    {receiver, opts} = Keyword.pop(opts, :receiver)
+    {headers, opts} = Keyword.pop(opts, :headers)
+    {url, _opts} = Keyword.pop(opts, :url)
+
+    WebSockex.start_link(url, __MODULE__, %{receiver: receiver}, extra_headers: headers)
   end
 
   def send(client, message) do
     WebSockex.send_frame(client, {:text, message})
+  end
+
+  def handle_disconnect(_conn_status, state) do
+    {:reconnect, state}
   end
 
   def handle_frame({type, msg} = frame, st) do
